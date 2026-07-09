@@ -53,8 +53,8 @@ This version focuses on the core web-service features and intentionally excludes
 - Node.js
 - Express.js
 - TypeScript
-- Prisma ORM
-- PostgreSQL
+- Supabase
+- Supabase JavaScript Client
 - JWT
 - bcrypt
 - Zod
@@ -64,7 +64,7 @@ This version focuses on the core web-service features and intentionally excludes
 - Git
 - GitHub
 - Postman
-- Docker for PostgreSQL, optional
+- Supabase Studio
 
 ---
 
@@ -78,7 +78,7 @@ React Frontend
 Node.js + Express Backend
       |
       v
-PostgreSQL Database
+Supabase Database
 ```
 
 The application follows a modular monolith architecture. Each business area is separated into its own backend module while running inside a single API application.
@@ -103,9 +103,6 @@ renteasy/
 │   │   ├── common/
 │   │   ├── app.ts
 │   │   └── server.ts
-│   ├── prisma/
-│   │   ├── schema.prisma
-│   │   └── seed.ts
 │   ├── tests/
 │   ├── package.json
 │   └── .env.example
@@ -122,7 +119,8 @@ renteasy/
 │   ├── package.json
 │   └── .env.example
 │
-├── docker-compose.yml
+├── supabase/
+│   └── schema.sql
 └── README.md
 ```
 
@@ -405,7 +403,7 @@ Owner reviews the request
             booking becomes REJECTED
 ```
 
-A PostgreSQL transaction should be used while approving a booking to prevent two students from receiving the same last available bed.
+A Supabase RPC or guarded update should be used while approving a booking to prevent two students from receiving the same last available bed.
 
 ---
 
@@ -550,7 +548,9 @@ Create a `.env` file inside the backend directory.
 ```env
 PORT=3000
 NODE_ENV=development
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/renteasy"
+SUPABASE_URL="https://your-project-ref.supabase.co"
+SUPABASE_ANON_KEY="your-supabase-anon-key"
+SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
 JWT_SECRET="replace-with-a-strong-secret"
 JWT_EXPIRES_IN="7d"
 FRONTEND_URL="http://localhost:5173"
@@ -560,6 +560,8 @@ Frontend `.env`:
 
 ```env
 VITE_API_URL="http://localhost:3000/api"
+VITE_SUPABASE_URL="https://your-project-ref.supabase.co"
+VITE_SUPABASE_ANON_KEY="your-supabase-anon-key"
 ```
 
 Do not commit real secrets to GitHub.
@@ -573,9 +575,9 @@ Do not commit real secrets to GitHub.
 Install:
 
 - Node.js 20 or later
-- PostgreSQL 15 or later
 - npm or pnpm
 - Git
+- Supabase project
 
 ### Clone the Repository
 
@@ -590,10 +592,10 @@ cd renteasy
 cd backend
 npm install
 cp .env.example .env
-npx prisma migrate dev
-npx prisma generate
 npm run dev
 ```
+
+Create or verify the Supabase tables using `supabase/schema.sql` in the Supabase SQL Editor.
 
 The backend should run at:
 
@@ -630,7 +632,6 @@ npm run build
 npm start
 npm run lint
 npm test
-npx prisma studio
 ```
 
 ### Frontend
@@ -653,7 +654,7 @@ npm run lint
 - Restrict routes by user role
 - Check listing ownership before updates or deletion
 - Check booking ownership before cancellation
-- Use Prisma parameterized queries
+- Use the Supabase client instead of raw SQL in API handlers
 - Configure CORS
 - Use Helmet
 - Add rate limiting to login and registration routes
@@ -729,7 +730,7 @@ Recommended test cases:
 ### Phase 1: Project Setup
 
 - Initialize backend and frontend
-- Configure PostgreSQL and Prisma
+- Configure Supabase
 - Add validation and error handling
 - Create the base folder structure
 
