@@ -74,16 +74,16 @@ export function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <section className="border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="surface p-5">
         <div className="flex items-center gap-2">
           <Shield className="h-6 w-6 text-leaf" aria-hidden="true" />
-          <h1 className="text-2xl font-black text-ink">Admin workspace</h1>
+          <h1 className="display-font text-2xl font-extrabold text-ink">Admin workspace</h1>
         </div>
-        {error && <p className="mt-4 border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{error}</p>}
-        {notice && <p className="mt-4 border border-leaf/20 bg-mint px-3 py-2 text-sm font-medium text-leaf">{notice}</p>}
+        {error && <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{error}</p>}
+        {notice && <p className="mt-4 rounded-lg border border-leaf/20 bg-mint px-3 py-2 text-sm font-medium text-leaf">{notice}</p>}
       </section>
 
-      <section className="border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="surface p-5">
         <div className="mb-4 flex items-center gap-2">
           <UsersRound className="h-5 w-5 text-leaf" aria-hidden="true" />
           <h2 className="text-xl font-bold text-ink">Users</h2>
@@ -127,7 +127,7 @@ export function AdminDashboardPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <div className="border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="surface p-5">
           <div className="mb-4 flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-leaf" aria-hidden="true" />
             <h2 className="text-xl font-bold text-ink">Bookings</h2>
@@ -139,7 +139,7 @@ export function AdminDashboardPage() {
               {bookings.map((booking) => (
                 <div key={booking.id} className="flex items-center justify-between gap-3 border border-slate-200 p-3">
                   <div>
-                    <p className="text-sm font-bold text-ink">{booking.id.slice(0, 8)}</p>
+                    <p className="mono-value text-sm font-bold text-ink">{booking.id.slice(0, 8)}</p>
                     <p className="text-xs text-slate-500">{new Date(booking.created_at).toLocaleString()}</p>
                   </div>
                   <StatusPill status={booking.status} />
@@ -149,7 +149,7 @@ export function AdminDashboardPage() {
           )}
         </div>
 
-        <div className="border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="surface p-5">
           <div className="mb-4 flex items-center gap-2">
             <Star className="h-5 w-5 text-leaf" aria-hidden="true" />
             <h2 className="text-xl font-bold text-ink">Reviews</h2>

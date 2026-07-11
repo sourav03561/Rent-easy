@@ -34,6 +34,14 @@ usersRouter.patch(
     const body = validateBody(updateProfileSchema, req);
 
     const nextName = body.name ?? body.fullName;
+    const profilePayload = {
+      id: user.id,
+      full_name: nextName ?? user.name,
+      email: user.email,
+      role: user.role,
+      ...(body.phone !== undefined ? { phone: body.phone } : {}),
+      ...(body.avatarUrl !== undefined ? { avatar_url: body.avatarUrl } : {})
+    };
 
     if (nextName) {
       const { error: userError } = await supabase
@@ -48,14 +56,7 @@ usersRouter.patch(
 
     const { data: profile, error } = await supabase
       .from("profiles")
-      .upsert({
-        id: user.id,
-        full_name: nextName ?? user.name,
-        email: user.email,
-        phone: body.phone,
-        role: user.role,
-        avatar_url: body.avatarUrl
-      })
+      .upsert(profilePayload)
       .select("id, full_name, email, phone, role, avatar_url, created_at")
       .single();
 

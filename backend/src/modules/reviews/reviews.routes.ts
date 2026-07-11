@@ -47,16 +47,23 @@ reviewsRouter.post(
       throw notFound("Listing");
     }
 
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
     const { data: eligibleBooking } = await supabase
       .from("bookings")
-      .select("id")
+      .select("id, completed_at")
       .eq("listing_id", listingId)
       .eq("student_id", user.id)
-      .in("status", ["APPROVED", "COMPLETED"])
+      .eq("status", "COMPLETED")
+      .not("completed_at", "is", null)
+      .lte("completed_at", oneMonthAgo.toISOString())
+      .order("completed_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (!eligibleBooking) {
-      throw new AppError("Only students with an approved or completed booking can review", 403);
+      throw new AppError("You can review only after your completed stay is at least one month old", 403);
     }
 
     const { data: existingReview } = await supabase

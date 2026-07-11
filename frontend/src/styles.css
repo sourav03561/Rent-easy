@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@700;800&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,9 +12,18 @@
   body {
     margin: 0;
     min-width: 320px;
-    background: #f7faf8;
+    background: #f3f7fa;
+    color: #111827;
     font-family:
       Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  .display-font {
+    font-family:
+      "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
   button,
@@ -34,19 +45,19 @@
 
 @layer components {
   .primary-button {
-    @apply inline-flex h-11 items-center justify-center gap-2 bg-leaf px-4 text-sm font-bold text-white transition hover:bg-teal-800;
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-leaf px-4 text-sm font-bold text-white shadow-panel transition hover:bg-teal-700;
   }
 
   .secondary-button {
-    @apply inline-flex h-10 items-center justify-center gap-2 border border-slate-300 bg-white px-3 text-sm font-bold text-ink transition hover:border-leaf hover:text-leaf;
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-ink shadow-panel transition hover:border-leaf hover:text-leaf;
   }
 
   .icon-button {
-    @apply grid h-10 w-10 place-items-center border border-slate-300 bg-white text-ink transition hover:border-leaf hover:text-leaf;
+    @apply grid h-10 w-10 place-items-center rounded-lg border border-slate-200 bg-white text-ink shadow-panel transition hover:border-leaf hover:text-leaf;
   }
 
   .field-label {
-    @apply block text-sm font-bold text-slate-700;
+    @apply block text-xs font-extrabold uppercase tracking-wide text-slate-600;
   }
 
   .field-wrap {
@@ -58,7 +69,7 @@
   }
 
   .field-input {
-    @apply mt-1 h-11 w-full border border-slate-300 bg-white px-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-leaf focus:ring-2 focus:ring-leaf/15;
+    @apply mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-leaf focus:ring-2 focus:ring-leaf/15;
   }
 
   textarea.field-input {
@@ -73,5 +84,43 @@
 
   .table-cell {
     @apply px-4 py-3 text-sm text-slate-600;
+  }
+
+  .mono-value {
+    font-family:
+      "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  }
+
+  .surface {
+    @apply rounded-lg border border-slate-200 bg-white shadow-panel;
+  }
+
+  .dashboard-nav-link {
+    @apply flex h-[38px] items-center gap-3 rounded-md px-3 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-ink;
+  }
+
+  .dashboard-nav-link-active {
+    @apply bg-mint text-leaf hover:bg-mint hover:text-leaf;
+  }
+
+  .room-card-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: start;
+  }
+
+  @media (min-width: 640px) {
+    .room-card-grid {
+      grid-template-columns: repeat(auto-fill, minmax(240px, 300px));
+    }
+  }
+
+  .sidebar-link {
+    @apply flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-bold text-slate-600 transition hover:bg-slate-100 hover:text-ink;
+  }
+
+  .sidebar-link-active {
+    @apply bg-leaf text-white shadow-panel hover:bg-leaf hover:text-white;
   }
 }

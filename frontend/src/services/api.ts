@@ -10,6 +10,11 @@ export const api = axios.create({
   }
 });
 
+type ApiErrorPayload = {
+  message?: string;
+  errors?: unknown;
+};
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("renteasy_token");
 
@@ -20,9 +25,28 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+function formatValidationErrors(errors: unknown) {
+  if (!errors || typeof errors !== "object") {
+    return "";
+  }
+
+  return Object.entries(errors)
+    .flatMap(([field, messages]) => {
+      if (Array.isArray(messages)) {
+        return messages.map((message) => `${field}: ${String(message)}`);
+      }
+
+      return [`${field}: ${String(messages)}`];
+    })
+    .join(", ");
+}
+
 export function getApiError(error: unknown) {
-  if (axios.isAxiosError<{ message?: string }>(error)) {
-    return error.response?.data?.message ?? error.message;
+  if (axios.isAxiosError<ApiErrorPayload>(error)) {
+    const message = error.response?.data?.message ?? error.message;
+    const validationErrors = formatValidationErrors(error.response?.data?.errors);
+
+    return validationErrors ? `${message}: ${validationErrors}` : message;
   }
 
   return error instanceof Error ? error.message : "Something went wrong";
@@ -44,11 +68,26 @@ export type ListingPayload = {
   city: string;
   address: string;
   price: number;
+  vacantRooms: number;
   amenities: string[];
   photos: string[];
   available: boolean;
   description?: string;
 };
+
+type SearchParams = {
+  city?: string;
+  type?: ListingType | "";
+  minRent?: string;
+  maxRent?: string;
+  available?: string;
+};
+
+function omitBlankParams(params: SearchParams) {
+  return Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== "")
+  );
+}
 
 export const authApi = {
   register: (payload: RegisterPayload) =>
@@ -68,8 +107,8 @@ export const usersApi = {
 };
 
 export const listingsApi = {
-  search: (params: { city?: string; type?: ListingType | ""; minRent?: string; maxRent?: string; available?: string }) =>
-    api.get<ApiResponse<{ listings: Listing[] }>>("/listings", { params }),
+  search: (params: SearchParams) =>
+    api.get<ApiResponse<{ listings: Listing[] }>>("/listings", { params: omitBlankParams(params) }),
   details: (id: string) =>
     api.get<ApiResponse<{ listing: Listing; reviews: Review[] }>>(`/listings/${id}`),
   create: (payload: ListingPayload) => api.post<ApiResponse<{ listing: Listing }>>("/listings", payload),
@@ -84,7 +123,8 @@ export const bookingsApi = {
   mine: () => api.get<ApiResponse<{ bookings: Booking[] }>>("/bookings/me"),
   cancel: (id: string) => api.patch<ApiResponse<{ booking: Booking }>>(`/bookings/${id}/cancel`),
   approve: (id: string) => api.patch<ApiResponse<{ booking: Booking }>>(`/bookings/${id}/approve`),
-  reject: (id: string) => api.patch<ApiResponse<{ booking: Booking }>>(`/bookings/${id}/reject`)
+  reject: (id: string) => api.patch<ApiResponse<{ booking: Booking }>>(`/bookings/${id}/reject`),
+  complete: (id: string) => api.patch<ApiResponse<{ booking: Booking }>>(`/bookings/${id}/complete`)
 };
 
 export const ownersApi = {

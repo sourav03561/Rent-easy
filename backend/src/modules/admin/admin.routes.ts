@@ -10,19 +10,39 @@ export const adminRouter = Router();
 
 adminRouter.use(authenticate, authorize("ADMIN"));
 
+function isMissingColumn(error: { message?: string } | null | undefined, column: string) {
+  return Boolean(error?.message?.includes(column));
+}
+
+function withCompletedAtFallback<T extends object>(booking: T) {
+  const maybeBooking = booking as T & { completed_at?: string | null };
+
+  return {
+    ...booking,
+    completed_at: maybeBooking.completed_at ?? null
+  };
+}
+
 adminRouter.get(
   "/bookings",
   asyncHandler(async (_req, res) => {
-    const { data, error } = await supabase
+    let result: any = await supabase
       .from("bookings")
-      .select("id, listing_id, student_id, status, message, created_at")
+      .select("id, listing_id, student_id, status, message, completed_at, created_at")
       .order("created_at", { ascending: false });
 
-    if (error) {
-      throw new AppError(error.message, 500);
+    if (isMissingColumn(result.error, "completed_at")) {
+      result = await supabase
+        .from("bookings")
+        .select("id, listing_id, student_id, status, message, created_at")
+        .order("created_at", { ascending: false });
     }
 
-    res.json(successResponse("Bookings fetched successfully", { bookings: data ?? [] }));
+    if (result.error) {
+      throw new AppError(result.error.message, 500);
+    }
+
+    res.json(successResponse("Bookings fetched successfully", { bookings: ((result.data ?? []) as object[]).map(withCompletedAtFallback) }));
   })
 );
 

@@ -12,6 +12,7 @@ const initialListing: ListingPayload = {
   city: "",
   address: "",
   price: 5000,
+  vacantRooms: 1,
   amenities: [],
   photos: [],
   available: true,
@@ -24,6 +25,7 @@ export function OwnerDashboardPage() {
   const [form, setForm] = useState<ListingPayload>(initialListing);
   const [amenitiesText, setAmenitiesText] = useState("");
   const [photosText, setPhotosText] = useState("");
+  const [vacancyDrafts, setVacancyDrafts] = useState<Record<string, number>>({});
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
@@ -33,6 +35,9 @@ export function OwnerDashboardPage() {
     try {
       const [listingsResponse, bookingsResponse] = await Promise.all([ownersApi.listings(), ownersApi.bookings()]);
       setListings(listingsResponse.data.data.listings);
+      setVacancyDrafts(
+        Object.fromEntries(listingsResponse.data.data.listings.map((listing) => [listing.id, listing.vacant_rooms]))
+      );
       setBookings(bookingsResponse.data.data.bookings);
     } catch (apiError) {
       setError(getApiError(apiError));
@@ -77,18 +82,34 @@ export function OwnerDashboardPage() {
     }
   };
 
-  const updateBooking = async (id: string, action: "approve" | "reject") => {
+  const updateVacancy = async (listing: Listing) => {
+    setNotice("");
+    setError("");
+
+    try {
+      const vacantRooms = Math.max(0, Number(vacancyDrafts[listing.id] ?? listing.vacant_rooms));
+      await listingsApi.update(listing.id, { vacantRooms, available: vacantRooms > 0 });
+      setNotice("Vacant rooms updated.");
+      await loadOwnerData();
+    } catch (apiError) {
+      setError(getApiError(apiError));
+    }
+  };
+
+  const updateBooking = async (id: string, action: "approve" | "reject" | "complete") => {
     setNotice("");
     setError("");
 
     try {
       if (action === "approve") {
         await bookingsApi.approve(id);
-      } else {
+      } else if (action === "reject") {
         await bookingsApi.reject(id);
+      } else {
+        await bookingsApi.complete(id);
       }
 
-      setNotice(`Booking ${action}d.`);
+      setNotice(action === "complete" ? "Booking completed." : `Booking ${action}d.`);
       await loadOwnerData();
     } catch (apiError) {
       setError(getApiError(apiError));
@@ -98,14 +119,14 @@ export function OwnerDashboardPage() {
   return (
     <div className="space-y-6">
       <section className="grid gap-6 lg:grid-cols-[420px_1fr]">
-        <form onSubmit={createListing} className="border border-slate-200 bg-white p-5 shadow-sm">
+        <form onSubmit={createListing} className="surface p-5">
           <div className="mb-5 flex items-center gap-2">
             <Plus className="h-5 w-5 text-leaf" aria-hidden="true" />
-            <h1 className="text-xl font-black text-ink">New listing</h1>
+            <h1 className="display-font text-xl font-extrabold text-ink">New listing</h1>
           </div>
 
-          {error && <p className="mb-4 border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{error}</p>}
-          {notice && <p className="mb-4 border border-leaf/20 bg-mint px-3 py-2 text-sm font-medium text-leaf">{notice}</p>}
+          {error && <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{error}</p>}
+          {notice && <p className="mb-4 rounded-lg border border-leaf/20 bg-mint px-3 py-2 text-sm font-medium text-leaf">{notice}</p>}
 
           <div className="grid gap-4">
             <label className="field-label">
@@ -125,6 +146,16 @@ export function OwnerDashboardPage() {
                 Rent
                 <input className="field-input" type="number" value={form.price} onChange={(event) => setForm({ ...form, price: Number(event.target.value) })} />
               </label>
+              <label className="field-label">
+                Vacant rooms
+                <input
+                  className="field-input"
+                  type="number"
+                  min={0}
+                  value={form.vacantRooms}
+                  onChange={(event) => setForm({ ...form, vacantRooms: Number(event.target.value) })}
+                />
+              </label>
             </div>
             <label className="field-label">
               City
@@ -140,7 +171,12 @@ export function OwnerDashboardPage() {
             </label>
             <label className="field-label">
               Photo URLs
-              <input className="field-input" value={photosText} onChange={(event) => setPhotosText(event.target.value)} />
+              <input
+                className="field-input"
+                value={photosText}
+                onChange={(event) => setPhotosText(event.target.value)}
+                placeholder="https://image-1.jpg, https://image-2.jpg"
+              />
             </label>
             <label className="field-label">
               Description
@@ -162,6 +198,22 @@ export function OwnerDashboardPage() {
               {listings.map((listing) => (
                 <div key={listing.id} className="space-y-2">
                   <ListingCard listing={listing} compact />
+                  <div className="flex gap-2">
+                    <label className="sr-only" htmlFor={`vacancy-${listing.id}`}>Vacant rooms</label>
+                    <input
+                      id={`vacancy-${listing.id}`}
+                      className="field-input mt-0 h-10"
+                      type="number"
+                      min={0}
+                      value={vacancyDrafts[listing.id] ?? listing.vacant_rooms}
+                      onChange={(event) =>
+                        setVacancyDrafts((current) => ({ ...current, [listing.id]: Number(event.target.value) }))
+                      }
+                    />
+                    <button type="button" onClick={() => void updateVacancy(listing)} className="secondary-button h-10 shrink-0">
+                      Update rooms
+                    </button>
+                  </div>
                   <button type="button" onClick={() => void removeListing(listing.id)} className="secondary-button w-full">
                     Remove listing
                   </button>
@@ -172,7 +224,7 @@ export function OwnerDashboardPage() {
         </section>
       </section>
 
-      <section className="border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="surface p-5">
         <div className="mb-4 flex items-center gap-2">
           <ClipboardList className="h-5 w-5 text-leaf" aria-hidden="true" />
           <h2 className="text-xl font-bold text-ink">Booking requests</h2>
@@ -193,8 +245,8 @@ export function OwnerDashboardPage() {
               <tbody className="divide-y divide-slate-100">
                 {bookings.map((booking) => (
                   <tr key={booking.id}>
-                    <td className="table-cell font-semibold text-ink">{booking.id.slice(0, 8)}</td>
-                    <td className="table-cell">{booking.listing_id.slice(0, 8)}</td>
+                    <td className="table-cell mono-value font-semibold text-ink">{booking.id.slice(0, 8)}</td>
+                    <td className="table-cell mono-value">{booking.listing_id.slice(0, 8)}</td>
                     <td className="table-cell"><StatusPill status={booking.status} /></td>
                     <td className="table-cell text-right">
                       {booking.status === "PENDING" && (
@@ -206,6 +258,11 @@ export function OwnerDashboardPage() {
                             Reject
                           </button>
                         </div>
+                      )}
+                      {booking.status === "APPROVED" && (
+                        <button type="button" onClick={() => void updateBooking(booking.id, "complete")} className="text-sm font-bold text-indigo-700">
+                          Mark complete
+                        </button>
                       )}
                     </td>
                   </tr>

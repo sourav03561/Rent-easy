@@ -1,11 +1,14 @@
 import { FormEvent, useState } from "react";
-import { Building2, KeyRound, Mail, UserRound } from "lucide-react";
+import { Home, KeyRound, Mail, UserRound } from "lucide-react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getApiError } from "../services/api";
 import type { UserRole } from "../types/api";
 
 type Mode = "login" | "register";
+type RegisterRole = Exclude<UserRole, "ADMIN">;
+
+const registerRoles: RegisterRole[] = ["STUDENT", "OWNER"];
 
 export function AuthPage() {
   const { user, login, register } = useAuth();
@@ -15,7 +18,7 @@ export function AuthPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Exclude<UserRole, "ADMIN">>("STUDENT");
+  const [role, setRole] = useState<RegisterRole>("STUDENT");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -45,38 +48,34 @@ export function AuthPage() {
   };
 
   return (
-    <div className="grid min-h-[calc(100vh-140px)] gap-6 lg:grid-cols-[1fr_440px] lg:items-stretch">
-      <section className="relative min-h-[420px] overflow-hidden bg-ink text-white">
-        <img
-          src="https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=1400&q=80"
-          alt="Student accommodation lounge"
-          className="absolute inset-0 h-full w-full object-cover opacity-55"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/70 to-transparent" />
-        <div className="relative flex h-full flex-col justify-end p-8 sm:p-10">
-          <span className="mb-4 grid h-12 w-12 place-items-center bg-coral">
-            <Building2 className="h-6 w-6" aria-hidden="true" />
-          </span>
-          <h1 className="max-w-xl text-4xl font-black leading-tight sm:text-5xl">RentEasy</h1>
-          <p className="mt-4 max-w-xl text-base leading-7 text-white/85">
-            Find and manage student PGs, hostels, and mess stays from one focused workspace.
-          </p>
+    <div className="flex min-h-screen items-center justify-center bg-canvas px-4 py-10">
+      <section className="w-full max-w-[420px]">
+        <div className="mb-9 flex items-center justify-center gap-2">
+          <Home className="h-5 w-5 text-leaf" aria-hidden="true" />
+          <span className="display-font text-lg font-extrabold text-leaf">RentEasy</span>
         </div>
-      </section>
 
-      <section className="border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="mb-6 grid grid-cols-2 border border-slate-200 bg-slate-50 p-1">
+        <div className="mb-7 text-center">
+          <h1 className="display-font text-3xl font-extrabold tracking-tight text-ink">Welcome back</h1>
+          <p className="mt-2 text-sm font-medium text-slate-500">Sign in to your account to continue.</p>
+        </div>
+
+        <div className="mb-6 grid grid-cols-2 rounded-lg bg-slate-100 p-1">
           <button
             type="button"
             onClick={() => setMode("login")}
-            className={`h-10 text-sm font-bold ${mode === "login" ? "bg-ink text-white" : "text-slate-600"}`}
+            className={`h-10 rounded-lg text-sm font-bold transition ${
+              mode === "login" ? "bg-white text-ink shadow-panel" : "text-slate-500 hover:text-ink"
+            }`}
           >
             Login
           </button>
           <button
             type="button"
             onClick={() => setMode("register")}
-            className={`h-10 text-sm font-bold ${mode === "register" ? "bg-ink text-white" : "text-slate-600"}`}
+            className={`h-10 rounded-lg text-sm font-bold transition ${
+              mode === "register" ? "bg-white text-ink shadow-panel" : "text-slate-500 hover:text-ink"
+            }`}
           >
             Register
           </button>
@@ -85,16 +84,22 @@ export function AuthPage() {
         <form onSubmit={submit} className="space-y-4">
           {mode === "register" && (
             <label className="field-label">
-              Name
+              Full name
               <span className="field-wrap">
                 <UserRound className="field-icon" aria-hidden="true" />
-                <input className="field-input pl-10" value={name} onChange={(event) => setName(event.target.value)} required />
+                <input
+                  className="field-input pl-10"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Sourav Sarkar"
+                  required
+                />
               </span>
             </label>
           )}
 
           <label className="field-label">
-            Email
+            Email address
             <span className="field-wrap">
               <Mail className="field-icon" aria-hidden="true" />
               <input
@@ -102,6 +107,7 @@ export function AuthPage() {
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@email.com"
                 required
               />
             </span>
@@ -117,27 +123,51 @@ export function AuthPage() {
                 minLength={8}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                placeholder="••••••••"
                 required
               />
             </span>
           </label>
 
           {mode === "register" && (
-            <label className="field-label">
-              Role
-              <select className="field-input" value={role} onChange={(event) => setRole(event.target.value as Exclude<UserRole, "ADMIN">)}>
-                <option value="STUDENT">Student</option>
-                <option value="OWNER">Property owner</option>
-              </select>
-            </label>
+            <div>
+              <p className="field-label">I am a</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {registerRoles.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setRole(item)}
+                    className={`h-10 rounded-lg border text-sm font-bold transition ${
+                      role === item
+                        ? "border-leaf bg-mint text-leaf"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-leaf/50 hover:text-leaf"
+                    }`}
+                  >
+                    {item === "STUDENT" ? "Student" : "Owner"}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
 
-          {error && <p className="border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{error}</p>}
+          {error && <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{error}</p>}
 
-          <button type="submit" disabled={busy} className="primary-button w-full">
-            {busy ? "Please wait" : mode === "login" ? "Login" : "Create account"}
+          <button type="submit" disabled={busy} className="primary-button mt-2 w-full">
+            {busy ? "Please wait" : mode === "login" ? "Sign In" : "Create account"}
           </button>
         </form>
+
+        <p className="mt-5 text-center text-sm text-slate-500">
+          {mode === "login" ? "No account?" : "Already have an account?"}{" "}
+          <button
+            type="button"
+            onClick={() => setMode(mode === "login" ? "register" : "login")}
+            className="font-extrabold text-leaf"
+          >
+            {mode === "login" ? "Register" : "Login"}
+          </button>
+        </p>
       </section>
     </div>
   );

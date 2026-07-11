@@ -12,6 +12,68 @@ export const bookingsRouter = Router();
 
 bookingsRouter.use(authenticate);
 
+const bookingSelectBase = "id, listing_id, student_id, status, message, created_at";
+const bookingSelectWithCompleted = "id, listing_id, student_id, status, message, completed_at, created_at";
+
+function isMissingColumn(error: { message?: string } | null | undefined, column: string) {
+  return Boolean(error?.message?.includes(column));
+}
+
+function withCompletedAtFallback<T extends object>(booking: T) {
+  const maybeBooking = booking as T & { completed_at?: string | null };
+
+  return {
+    ...booking,
+    completed_at: maybeBooking.completed_at ?? null
+  };
+}
+
+async function fetchBooking(bookingId: string) {
+  let result: any = await supabase
+    .from("bookings")
+    .select(bookingSelectWithCompleted)
+    .eq("id", bookingId)
+    .single();
+
+  if (isMissingColumn(result.error, "completed_at")) {
+    result = await supabase
+      .from("bookings")
+      .select(bookingSelectBase)
+      .eq("id", bookingId)
+      .single();
+  }
+
+  return result;
+}
+
+async function fetchListingForBooking(listingId: string) {
+  let result: any = await supabase
+    .from("listings")
+    .select("id, owner_id, available, vacant_rooms")
+    .eq("id", listingId)
+    .single();
+
+  if (isMissingColumn(result.error, "vacant_rooms")) {
+    const legacyResult = await supabase
+      .from("listings")
+      .select("id, owner_id, available")
+      .eq("id", listingId)
+      .single();
+
+    return {
+      data: legacyResult.data ? { ...legacyResult.data, vacant_rooms: legacyResult.data.available ? 1 : 0 } : null,
+      error: legacyResult.error,
+      supportsVacancy: false
+    };
+  }
+
+  return {
+    data: result.data,
+    error: result.error,
+    supportsVacancy: true
+  };
+}
+
 bookingsRouter.post(
   "/",
   authorize("STUDENT"),
@@ -19,11 +81,7 @@ bookingsRouter.post(
     const user = requireUser(req);
     const body = validateBody(createBookingSchema, req);
 
-    const { data: listing, error: listingError } = await supabase
-      .from("listings")
-      .select("id, owner_id, available")
-      .eq("id", body.listingId)
-      .single();
+    const { data: listing, error: listingError } = await fetchListingForBooking(body.listingId);
 
     if (listingError || !listing) {
       throw notFound("Listing");
@@ -31,6 +89,10 @@ bookingsRouter.post(
 
     if (!listing.available) {
       throw new AppError("This listing is not currently available", 409);
+    }
+
+    if (listing.vacant_rooms <= 0) {
+      throw new AppError("There are no vacant rooms for this listing", 409);
     }
 
     if (listing.owner_id === user.id) {
@@ -57,14 +119,14 @@ bookingsRouter.post(
         message: body.message,
         status: "PENDING"
       })
-      .select("id, listing_id, student_id, status, message, created_at")
+      .select(bookingSelectBase)
       .single();
 
     if (error || !data) {
       throw new AppError(error?.message ?? "Unable to create booking", 500);
     }
 
-    res.status(201).json(successResponse("Booking request created successfully", { booking: data }));
+    res.status(201).json(successResponse("Booking request created successfully", { booking: withCompletedAtFallback(data) }));
   })
 );
 
@@ -74,17 +136,25 @@ bookingsRouter.get(
   asyncHandler(async (req, res) => {
     const user = requireUser(req);
 
-    const { data, error } = await supabase
+    let result: any = await supabase
       .from("bookings")
-      .select("id, listing_id, student_id, status, message, created_at")
+      .select(bookingSelectWithCompleted)
       .eq("student_id", user.id)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      throw new AppError(error.message, 500);
+    if (isMissingColumn(result.error, "completed_at")) {
+      result = await supabase
+        .from("bookings")
+        .select(bookingSelectBase)
+        .eq("student_id", user.id)
+        .order("created_at", { ascending: false });
     }
 
-    res.json(successResponse("Bookings fetched successfully", { bookings: data ?? [] }));
+    if (result.error) {
+      throw new AppError(result.error.message, 500);
+    }
+
+    res.json(successResponse("Bookings fetched successfully", { bookings: ((result.data ?? []) as object[]).map(withCompletedAtFallback) }));
   })
 );
 
@@ -94,11 +164,7 @@ bookingsRouter.get(
     const user = requireUser(req);
     const bookingId = routeParam(req, "id");
 
-    const { data: booking, error } = await supabase
-      .from("bookings")
-      .select("id, listing_id, student_id, status, message, created_at")
-      .eq("id", bookingId)
-      .single();
+    const { data: booking, error } = await fetchBooking(bookingId);
 
     if (error || !booking) {
       throw notFound("Booking");
@@ -117,7 +183,7 @@ bookingsRouter.get(
       throw new AppError("You can only view your own bookings", 403);
     }
 
-    res.json(successResponse("Booking fetched successfully", { booking, listing }));
+    res.json(successResponse("Booking fetched successfully", { booking: withCompletedAtFallback(booking), listing }));
   })
 );
 
@@ -150,14 +216,14 @@ bookingsRouter.patch(
       .from("bookings")
       .update({ status: "CANCELLED" })
       .eq("id", bookingId)
-      .select("id, listing_id, student_id, status, message, created_at")
+      .select(bookingSelectBase)
       .single();
 
     if (error || !data) {
       throw new AppError(error?.message ?? "Unable to cancel booking", 500);
     }
 
-    res.json(successResponse("Booking cancelled successfully", { booking: data }));
+    res.json(successResponse("Booking cancelled successfully", { booking: withCompletedAtFallback(data) }));
   })
 );
 
@@ -166,21 +232,13 @@ async function updateOwnerBookingStatus(
   ownerId: string,
   status: "APPROVED" | "REJECTED"
 ) {
-  const { data: booking, error: bookingError } = await supabase
-    .from("bookings")
-    .select("id, listing_id, student_id, status, message, created_at")
-    .eq("id", bookingId)
-    .single();
+  const { data: booking, error: bookingError } = await fetchBooking(bookingId);
 
   if (bookingError || !booking) {
     throw notFound("Booking");
   }
 
-  const { data: listing, error: listingError } = await supabase
-    .from("listings")
-    .select("id, owner_id, available")
-    .eq("id", booking.listing_id)
-    .single();
+  const { data: listing, error: listingError, supportsVacancy } = await fetchListingForBooking(booking.listing_id);
 
   if (listingError || !listing) {
     throw notFound("Listing");
@@ -198,11 +256,15 @@ async function updateOwnerBookingStatus(
     throw new AppError("This listing is no longer available", 409);
   }
 
+  if (status === "APPROVED" && listing.vacant_rooms <= 0) {
+    throw new AppError("There are no vacant rooms for this listing", 409);
+  }
+
   const { data, error } = await supabase
     .from("bookings")
     .update({ status })
     .eq("id", bookingId)
-    .select("id, listing_id, student_id, status, message, created_at")
+    .select(bookingSelectBase)
     .single();
 
   if (error || !data) {
@@ -210,10 +272,18 @@ async function updateOwnerBookingStatus(
   }
 
   if (status === "APPROVED") {
-    await supabase.from("listings").update({ available: false }).eq("id", booking.listing_id);
+    if (supportsVacancy) {
+      const nextVacantRooms = Math.max(0, listing.vacant_rooms - 1);
+      await supabase
+        .from("listings")
+        .update({ vacant_rooms: nextVacantRooms, available: nextVacantRooms > 0 })
+        .eq("id", booking.listing_id);
+    } else {
+      await supabase.from("listings").update({ available: false }).eq("id", booking.listing_id);
+    }
   }
 
-  return data;
+  return withCompletedAtFallback(data);
 }
 
 bookingsRouter.patch(
@@ -235,5 +305,60 @@ bookingsRouter.patch(
     const booking = await updateOwnerBookingStatus(routeParam(req, "id"), user.id, "REJECTED");
 
     res.json(successResponse("Booking rejected successfully", { booking }));
+  })
+);
+
+bookingsRouter.patch(
+  "/:id/complete",
+  authorize("OWNER", "ADMIN"),
+  asyncHandler(async (req, res) => {
+    const user = requireUser(req);
+    const bookingId = routeParam(req, "id");
+
+    const { data: booking, error: bookingError } = await fetchBooking(bookingId);
+
+    if (bookingError || !booking) {
+      throw notFound("Booking");
+    }
+
+    const { data: listing, error: listingError } = await supabase
+      .from("listings")
+      .select("id, owner_id")
+      .eq("id", booking.listing_id)
+      .single();
+
+    if (listingError || !listing) {
+      throw notFound("Listing");
+    }
+
+    if (user.role !== "ADMIN" && listing.owner_id !== user.id) {
+      throw new AppError("You can only complete bookings for your own listings", 403);
+    }
+
+    if (booking.status !== "APPROVED") {
+      throw new AppError("Only approved bookings can be marked completed", 400);
+    }
+
+    let result: any = await supabase
+      .from("bookings")
+      .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
+      .eq("id", bookingId)
+      .select(bookingSelectWithCompleted)
+      .single();
+
+    if (isMissingColumn(result.error, "completed_at")) {
+      result = await supabase
+        .from("bookings")
+        .update({ status: "COMPLETED" })
+        .eq("id", bookingId)
+        .select(bookingSelectBase)
+        .single();
+    }
+
+    if (result.error || !result.data) {
+      throw new AppError(result.error?.message ?? "Unable to complete booking", 500);
+    }
+
+    res.json(successResponse("Booking completed successfully", { booking: withCompletedAtFallback(result.data) }));
   })
 );

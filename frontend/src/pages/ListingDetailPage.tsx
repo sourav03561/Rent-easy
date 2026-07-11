@@ -1,17 +1,19 @@
-import { FormEvent, useEffect, useState } from "react";
-import { ArrowLeft, IndianRupee, MapPin, MessageSquare, Star } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ArrowLeft, BedDouble, IndianRupee, MapPin, MessageSquare, Star } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { getListingImage } from "../components/ListingCard";
 import { StatusPill } from "../components/StatusPill";
 import { useAuth } from "../context/AuthContext";
 import { bookingsApi, getApiError, listingsApi, reviewsApi } from "../services/api";
-import type { Listing, Review } from "../types/api";
+import type { Booking, Listing, Review } from "../types/api";
 
 export function ListingDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
   const [listing, setListing] = useState<Listing | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [bookingMessage, setBookingMessage] = useState("");
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
@@ -28,6 +30,12 @@ export function ListingDetailPage() {
       const response = await listingsApi.details(id);
       setListing(response.data.data.listing);
       setReviews(response.data.data.reviews);
+      setActivePhotoIndex(0);
+
+      if (user?.role === "STUDENT") {
+        const bookingsResponse = await bookingsApi.mine();
+        setBookings(bookingsResponse.data.data.bookings);
+      }
     } catch (apiError) {
       setError(getApiError(apiError));
     } finally {
@@ -37,7 +45,36 @@ export function ListingDetailPage() {
 
   useEffect(() => {
     void loadListing();
-  }, [id]);
+  }, [id, user?.role]);
+
+  const photos = useMemo(() => {
+    if (!listing) return [];
+    return listing.photos?.length ? listing.photos : [getListingImage(listing)];
+  }, [listing]);
+
+  const reviewEligibility = useMemo(() => {
+    if (!listing || user?.role !== "STUDENT") {
+      return { canReview: false, message: "Only students can review completed stays." };
+    }
+
+    const completedBooking = bookings.find((booking) => booking.listing_id === listing.id && booking.status === "COMPLETED");
+
+    if (!completedBooking?.completed_at) {
+      return { canReview: false, message: "You can review after your booking is completed and one month has passed." };
+    }
+
+    const reviewUnlocksAt = new Date(completedBooking.completed_at);
+    reviewUnlocksAt.setMonth(reviewUnlocksAt.getMonth() + 1);
+
+    if (reviewUnlocksAt > new Date()) {
+      return {
+        canReview: false,
+        message: `Rating unlocks on ${reviewUnlocksAt.toLocaleDateString()}.`
+      };
+    }
+
+    return { canReview: true, message: "Your completed stay is eligible for review." };
+  }, [bookings, listing, user?.role]);
 
   const requestBooking = async (event: FormEvent) => {
     event.preventDefault();
@@ -100,8 +137,25 @@ export function ListingDetailPage() {
       <section className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
         <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
           <div className="aspect-[16/9] bg-slate-100">
-            <img src={getListingImage(listing)} alt={listing.title} className="h-full w-full object-cover" />
+            <img src={photos[activePhotoIndex] ?? getListingImage(listing)} alt={listing.title} className="h-full w-full object-cover" />
           </div>
+          {photos.length > 1 && (
+            <div className="grid grid-cols-4 gap-2 border-b border-slate-100 p-3 sm:grid-cols-6">
+              {photos.map((photo, index) => (
+                <button
+                  key={`${photo}-${index}`}
+                  type="button"
+                  onClick={() => setActivePhotoIndex(index)}
+                  className={`aspect-[4/3] overflow-hidden rounded-md border ${
+                    activePhotoIndex === index ? "border-leaf ring-2 ring-leaf/20" : "border-slate-200"
+                  }`}
+                  aria-label={`Show room photo ${index + 1}`}
+                >
+                  <img src={photo} alt={`${listing.title} room ${index + 1}`} className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
           <div className="space-y-4 p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -119,6 +173,10 @@ export function ListingDetailPage() {
               <span className="text-3xl font-black">{listing.price.toLocaleString("en-IN")}</span>
               <span className="ml-1 text-sm text-slate-500">/month</span>
             </div>
+            <p className="inline-flex items-center gap-2 rounded-lg bg-mint px-3 py-2 text-sm font-extrabold text-leaf">
+              <BedDouble className="h-4 w-4" aria-hidden="true" />
+              {listing.vacant_rooms} room{listing.vacant_rooms === 1 ? "" : "s"} vacant
+            </p>
             {listing.description && <p className="leading-7 text-slate-700">{listing.description}</p>}
             {(listing.amenities?.length ?? 0) > 0 && (
               <div className="flex flex-wrap gap-2">
@@ -145,7 +203,7 @@ export function ListingDetailPage() {
                   maxLength={500}
                 />
               </label>
-              <button type="submit" disabled={!listing.available} className="primary-button mt-4 w-full">
+              <button type="submit" disabled={!listing.available || listing.vacant_rooms <= 0} className="primary-button mt-4 w-full">
                 Send request
               </button>
             </form>
@@ -159,9 +217,10 @@ export function ListingDetailPage() {
           {user?.role === "STUDENT" && (
             <form onSubmit={submitReview} className="border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="text-lg font-bold text-ink">Review</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{reviewEligibility.message}</p>
               <label className="field-label mt-4">
                 Rating
-                <select className="field-input" value={rating} onChange={(event) => setRating(Number(event.target.value))}>
+                <select className="field-input" value={rating} onChange={(event) => setRating(Number(event.target.value))} disabled={!reviewEligibility.canReview}>
                   {[5, 4, 3, 2, 1].map((value) => (
                     <option key={value} value={value}>{value}</option>
                   ))}
@@ -169,9 +228,14 @@ export function ListingDetailPage() {
               </label>
               <label className="field-label mt-4">
                 Comment
-                <textarea className="field-input min-h-24 resize-y" value={comment} onChange={(event) => setComment(event.target.value)} />
+                <textarea
+                  className="field-input min-h-24 resize-y"
+                  value={comment}
+                  onChange={(event) => setComment(event.target.value)}
+                  disabled={!reviewEligibility.canReview}
+                />
               </label>
-              <button type="submit" className="secondary-button mt-4 w-full">
+              <button type="submit" disabled={!reviewEligibility.canReview} className="secondary-button mt-4 w-full">
                 Submit review
               </button>
             </form>

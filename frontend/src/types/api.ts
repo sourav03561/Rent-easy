@@ -38,6 +38,7 @@ export type Listing = {
   amenities: string[] | null;
   photos: string[] | null;
   available: boolean;
+  vacant_rooms: number;
   description: string | null;
   created_at: string;
 };
@@ -50,6 +51,7 @@ export type Booking = {
   student_id: string;
   status: BookingStatus;
   message: string | null;
+  completed_at: string | null;
   created_at: string;
 };
 

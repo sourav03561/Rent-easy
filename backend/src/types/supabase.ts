@@ -78,6 +78,7 @@ export type Database = {
           amenities: string[] | null;
           photos: string[] | null;
           available: boolean;
+          vacant_rooms: number;
           description: string | null;
           created_at: string;
         };
@@ -92,6 +93,7 @@ export type Database = {
           amenities?: string[] | null;
           photos?: string[] | null;
           available?: boolean;
+          vacant_rooms?: number;
           description?: string | null;
           created_at?: string;
         };
@@ -106,6 +108,7 @@ export type Database = {
           amenities?: string[] | null;
           photos?: string[] | null;
           available?: boolean;
+          vacant_rooms?: number;
           description?: string | null;
           created_at?: string;
         };
@@ -118,6 +121,7 @@ export type Database = {
           student_id: string;
           status: string;
           message: string | null;
+          completed_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -126,6 +130,7 @@ export type Database = {
           student_id: string;
           status?: string;
           message?: string | null;
+          completed_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -134,6 +139,7 @@ export type Database = {
           student_id?: string;
           status?: string;
           message?: string | null;
+          completed_at?: string | null;
           created_at?: string;
         };
         Relationships: [];

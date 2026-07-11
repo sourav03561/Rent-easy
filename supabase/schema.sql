@@ -30,6 +30,7 @@ create table if not exists public.listings (
   amenities text[] default '{}',
   photos text[] default '{}',
   available bool not null default true,
+  vacant_rooms int4 not null default 1 check (vacant_rooms >= 0),
   description text,
   created_at timestamp with time zone not null default now()
 );
@@ -42,6 +43,7 @@ create table if not exists public.bookings (
     status in ('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'COMPLETED')
   ),
   message text,
+  completed_at timestamp with time zone,
   created_at timestamp with time zone not null default now()
 );
 
@@ -62,3 +64,9 @@ create index if not exists bookings_listing_id_idx on public.bookings(listing_id
 create index if not exists bookings_student_id_idx on public.bookings(student_id);
 create index if not exists bookings_status_idx on public.bookings(status);
 create index if not exists reviews_listing_id_idx on public.reviews(listing_id);
+
+alter table if exists public.listings
+  add column if not exists vacant_rooms int4 not null default 1 check (vacant_rooms >= 0);
+
+alter table if exists public.bookings
+  add column if not exists completed_at timestamp with time zone;
