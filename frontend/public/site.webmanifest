@@ -1,0 +1,23 @@
+{
+  "name": "RentEasy",
+  "short_name": "RentEasy",
+  "description": "Student accommodation platform for PGs, hostels, and mess facilities.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f7fa",
+  "theme_color": "#0f766e",
+  "icons": [
+    {
+      "src": "/renteasy-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/renteasy-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

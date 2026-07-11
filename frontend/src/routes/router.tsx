@@ -6,6 +6,7 @@ import { BrowsePage } from "../pages/BrowsePage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { ListingDetailPage } from "../pages/ListingDetailPage";
 import { OwnerDashboardPage } from "../pages/OwnerDashboardPage";
+import { SettingsPage } from "../pages/SettingsPage";
 import { ProtectedRoute } from "./ProtectedRoute";
 
 export const router = createBrowserRouter([
@@ -18,7 +19,10 @@ export const router = createBrowserRouter([
       { path: "listings/:id", element: <ListingDetailPage /> },
       {
         element: <ProtectedRoute />,
-        children: [{ path: "dashboard", element: <DashboardPage /> }]
+        children: [
+          { path: "dashboard", element: <DashboardPage /> },
+          { path: "settings", element: <SettingsPage /> }
+        ]
       },
       {
         element: <ProtectedRoute roles={["OWNER", "ADMIN"]} />,

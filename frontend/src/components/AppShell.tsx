@@ -2,11 +2,9 @@ import {
   AlertCircle,
   Bell,
   BookOpen,
-  Building2,
   CheckCircle2,
   ClipboardList,
   Clock3,
-  Home,
   LogOut,
   Menu,
   Search,
@@ -25,6 +23,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `dashboard-nav-link ${isActive ? "dashboard-nav-link-active" : ""}`;
 
 function pageTitle(pathname: string) {
+  if (pathname.startsWith("/settings")) return ["Settings", "Manage your account preferences"];
   if (pathname.startsWith("/dashboard")) return ["My Dashboard", "Manage your bookings and profile"];
   if (pathname.startsWith("/owner")) return ["Owner Dashboard", "Manage listings and booking requests"];
   if (pathname.startsWith("/admin")) return ["Admin Dashboard", "Review users, bookings, and content"];
@@ -177,8 +176,9 @@ export function AppShell() {
     <div className={`min-h-screen bg-canvas text-ink md:grid ${isSidebarOpen ? "md:grid-cols-[206px_1fr]" : "md:grid-cols-[56px_1fr]"}`}>
       <aside className="sticky top-0 z-30 flex border-b border-slate-200 bg-white md:h-screen md:flex-col md:border-b-0 md:border-r">
         <div className="flex h-[53px] items-center justify-between border-b border-slate-200 px-3 md:px-3">
-          <NavLink to="/" className="display-font truncate text-base font-extrabold text-leaf" aria-label="RentEasy home">
-            {isSidebarOpen ? "RentEasy" : "R"}
+          <NavLink to="/" className="flex min-w-0 items-center gap-2" aria-label="RentEasy home">
+            <img src="/renteasy-icon-64.png" alt="" className="h-8 w-8 shrink-0 rounded-lg" />
+            {isSidebarOpen && <span className="display-font truncate text-base font-extrabold text-leaf">RentEasy</span>}
           </NavLink>
           <button
             type="button"
@@ -242,10 +242,10 @@ export function AppShell() {
 
         {isSidebarOpen && (
         <div className="mt-auto hidden border-t border-slate-200 px-1 py-3 md:block">
-          <button type="button" className="dashboard-nav-link w-full">
+          <NavLink to="/settings" className={navLinkClass}>
             <Settings className="h-4 w-4" aria-hidden="true" />
             Settings
-          </button>
+          </NavLink>
           {user && (
             <button type="button" onClick={handleLogout} className="dashboard-nav-link w-full text-red-500 hover:bg-red-50 hover:text-red-600">
               <LogOut className="h-4 w-4" aria-hidden="true" />

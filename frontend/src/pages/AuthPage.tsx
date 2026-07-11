@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Home, KeyRound, Mail, UserRound } from "lucide-react";
+import { KeyRound, Mail, UserRound } from "lucide-react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getApiError } from "../services/api";
@@ -51,7 +51,7 @@ export function AuthPage() {
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4 py-10">
       <section className="w-full max-w-[420px]">
         <div className="mb-9 flex items-center justify-center gap-2">
-          <Home className="h-5 w-5 text-leaf" aria-hidden="true" />
+          <img src="/renteasy-icon-64.png" alt="" className="h-8 w-8 rounded-lg" />
           <span className="display-font text-lg font-extrabold text-leaf">RentEasy</span>
         </div>
 
